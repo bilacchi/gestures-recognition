@@ -1,36 +1,90 @@
 import vedo
+import json
+import numpy as np
+from datetime import datetime
 from itertools import cycle
 
 vedo.settings.enableDefaultKeyboardCallbacks = False
 vedo.settings.enableDefaultMouseCallbacks = False
 
 class Viewer:
-    def __init__(self, *args, **kwargs):
+    def __init__(self, timeline, *args, **kwargs):
         self.plotter = vedo.Plotter(*args, **kwargs) # setup the Plotter object
         self.keyevt = self.plotter.addCallback('KeyPressed', self.handle_key)
+        self.timeline = timeline
         self.angle = 0
         self.scaling = 2
-        self.posY = cycle([-200, 368, 932])
         self.d_theta = 36
-
+        self.exams = cycle(timeline.keys())
+        
+    def initialize(self):
+        self.current_exam = next(self.exams)
+        self.index = np.argmax(self.timeline[self.current_exam]['date'])
+        
+        mesh = self.timeline[self.current_exam]['file'][self.index] 
+        self.mesh = self.plotter.load(mesh)
+        
+        txt = f'{self.current_exam}\n'
+        txt += datetime.strptime(str(self.timeline[self.current_exam]['date'][self.index]), '%y%m%d').strftime('%d %B, %Y')
+        self.txt2d = vedo.CornerAnnotation().font('Arial').text(txt)
+        
+        self.show(self.mesh, self.txt2d, title='Brenda Plot', viewup='y').close()
+    
+    def changeExam(self):
+        mesh = self.timeline[self.current_exam]['file'][self.index] 
+        self.mesh = self.plotter.load(mesh)
+        
+        txt = f'{self.current_exam}\n'
+        txt += datetime.strptime(str(self.timeline[self.current_exam]['date'][self.index]), '%y%m%d').strftime('%d %B, %Y')
+        self.txt2d.text(txt)
+        
+        self.show(self.mesh, self.txt2d, title='Brenda Plot', viewup='z').close()
+    
+    def changeDate(self):
+        mesh = self.timeline[self.current_exam]['file'][self.index] 
+        self.mesh = self.plotter.load(mesh)
+        
+        txt = f'{self.current_exam}\n'
+        txt += datetime.strptime(str(self.timeline[self.current_exam]['date'][self.index]), '%y%m%d').strftime('%d %B, %Y')
+        self.txt2d.text(txt)
+        
+        self.show(self.mesh, self.txt2d, title='Brenda Plot', viewup='z').close()
+        
     def show(self, *args, **kwargs):
         plt = self.plotter.show(*args, **kwargs)
         return plt
-
+        
     def handle_key(self, evt):
-        if evt.keyPressed in ['Right']:
+        if evt.keyPressed in ['r']:
             self.angle += self.d_theta
             self.angle = 0 if self.angle == 360 else self.angle
-            mesh.origin(0,0,0).rotateY(self.d_theta).show(resetcam=False)
-
-        if evt.keyPressed in ['r']:
-            mesh.origin(0,0,0).scale(self.scaling, True).y(self.scaling*next(self.posY)).show(resetcam=False)
+            self.mesh.origin(0,0,0).rotateY(self.d_theta)
+            self.plotter.render()
+            
+        if evt.keyPressed in ['Right']:
+            self.index += 1
+            self.changeDate()
+            
+        if evt.keyPressed in ['Left']:
+            self.index -= 1
+            self.changeDate()
+        
+        if evt.keyPressed in ['Up']:
+            self.current_exam = next(self.exams)
+            self.changeExam()
         
         if evt.keyPressed in ['s']:
             angle = self.angle
-            self.angle = 0 
-            mesh.origin(0,0,0).y(0).scale(1, True).rotateY(360-angle).show(resetcam=False)
+            self.angle = 0
+            self.mesh.origin(0,0,0).y(0).scale(1, True).rotateY(360-angle)
+            self.plotter.render()
 
-viewer = Viewer()
-mesh = viewer.plotter.load('mesh/brenda2.ply')
-viewer.show(mesh, viewup='y').close()
+with open('timeline.json', 'r') as fjson:
+    timeline = json.load(fjson)
+    
+def main():
+    global timeline
+    viewer = Viewer(timeline).initialize()
+
+if __name__ == '__main__':
+    main()

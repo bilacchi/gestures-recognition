@@ -1,1 +1,13 @@
-{"model_name": "Jester-ConvBatch", "checkpoint": "Models/", "convnet": "ConvBatch", "images_folder":"../Gesture-Recognition-and-Control/20bn-jester-v1/", "zip_file": "../../20bn-jester-v1.zip", "test_dataset": "./annotations/eu1-jester-v1-test.csv", "train_dataset": "./annotations/eu1-jester-v1-train.csv", "validation_dataset": "./annotations/eu1-jester-v1-validation.csv", "num_classes": 8, "batch_size": 16, "clip_size": 18, "nb_frames": 18, "num_epochs": 20}
+{"model_name": "Jester-ConvBatch",
+    "checkpoint": "Models/",
+    "convnet": "ConvBatch",
+    "images_folder":"../Gesture-Recognition-and-Control/20bn-jester-v1/",
+    "zip_file": "../../20bn-jester-v1.zip",
+    "test_dataset": "./annotations/eu1-jester-v1-test.csv",
+    "train_dataset": "./annotations/eu1-jester-v1-train.csv",
+    "validation_dataset": "./annotations/eu1-jester-v1-validation.csv",
+    "num_classes": 8,
+    "batch_size": 16,
+    "clip_size": 18,
+    "nb_frames": 18,
+    "num_epochs": 20}
