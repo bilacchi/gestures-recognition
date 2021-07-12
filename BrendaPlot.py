@@ -22,12 +22,14 @@ class Viewer:
             ]
         self.plotter = vedo.Plotter(shape=custom_shape, size=self.windowSize)
         self.keyevt = self.plotter.addCallback('KeyPressed', self.handle_key)
-        self.timerevt = self.plotter.addCallback('timer', self.handle_timer)
         
         self.angle = 0
         self.d_theta = 36
         self.meshComp = None
+        self.meshSlice = None
         self.exams = cycle(list(timeline.keys()))
+        vec = np.linspace(-2.7, 0.75, 6)
+        self.zslice = np.round(list(zip(vec[:-1], vec[1:])), 2).tolist()
         self.timeline = {}
         for key in timeline.keys():
             self.timeline[key] = sorted(zip(timeline[key]['date'], timeline[key]['file']), reverse=True)
@@ -75,9 +77,23 @@ class Viewer:
             vedo.clear(at=1)
             self.plotter.render()
     
-    def handle_timer(self, evt):
-        pass
-    
+    def slicePlane(self):
+        _ , mesh = self.timeline[self.current_exam][self.index]
+        mesh = vedo.Mesh(mesh).normalize()
+        
+        y1, y2 = self.zslice[self.meshSlice]
+        ids = mesh.findCellsWithin(ybounds=(y1, y2))
+
+        cols = [[255, 99, 71] if i in ids else [177, 177, 177] for i in range(mesh.NCells())]  
+        mesh.cellIndividualColors(cols)
+
+        p1 = vedo.Plane(normal=(0,1,0), sx=2, sy=2).y(y1).c('gray',0.5)
+        p2 = p1.clone().y(y2)
+                
+        self.mesh = mesh
+        vedo.clear(at=0)
+        self.plotter.show(mesh, p1, p2, viewup="y", at=0)
+        
     def handle_key(self, evt):
         if evt.keyPressed in ['r']:
             self.angle += self.d_theta
@@ -113,49 +129,68 @@ class Viewer:
             self.miniWindow()
             
         if evt.keyPressed in ['s']:
-            if self.meshComp is None:
-                self.meshComp = (self.current_exam, self.index)
-                _ , mesh = self.timeline[self.meshComp[0]][self.meshComp[1]]
-                self.plotter.add(vedo.Mesh(mesh).normalize(), at=1)
+            if self.meshSlice is None:
+                if self.meshComp is None:
+                    self.meshComp = (self.current_exam, self.index)
+                    _ , mesh = self.timeline[self.meshComp[0]][self.meshComp[1]]
+                    self.plotter.add(vedo.Mesh(mesh).normalize(), at=1)
 
-            elif self.meshComp is not None and self.current_exam == 'Gordura':
-                _ , mesh = self.timeline[self.meshComp[0]][self.meshComp[1]]
-                mesh = vedo.Mesh(mesh).normalize()
-                
-                _ , mesh2 = self.timeline[self.current_exam][self.index]
-                mesh2 = vedo.Mesh(mesh2).normalize()
+                elif self.meshComp is not None and self.current_exam == 'Gordura':
+                    _ , mesh = self.timeline[self.meshComp[0]][self.meshComp[1]]
+                    mesh = vedo.Mesh(mesh).normalize()
+                    
+                    _ , mesh2 = self.timeline[self.current_exam][self.index]
+                    mesh2 = vedo.Mesh(mesh2).normalize()
 
-                mesh.distanceToMesh(mesh2, signed=True)
-                mesh.addScalarBar(title='Signed\nDistance')
+                    mesh.distanceToMesh(mesh2, signed=True)
+                    mesh.addScalarBar(title='Signed\nDistance')
+                    
+                    self.mesh = mesh
+                    self.miniWindow()
+                    self.plotter.show(mesh, at=0)
                 
-                self.mesh = mesh
-                self.miniWindow()
-                self.plotter.show(mesh, at=0)
+                elif self.meshComp is not None and self.current_exam == 'Postura':
+                    _ , mesh = self.timeline[self.meshComp[0]][self.meshComp[1]]
+                    mesh = vedo.Mesh(mesh).normalize()
+                    
+                    meshdec = mesh.clone().triangulate().decimate(N=200)
+
+                    sources = [[0.9, 0.0, 0.2]]  # this point moves
+                    targets = [[1.2, 0.0, 0.4]]  # to this.
+
+                    for pt in meshdec.points():
+                        if pt[0] < 0.3:          # these pts don't move
+                            sources.append(pt)   # source = target
+                            targets.append(pt)   #
+
+                    warp = mesh.clone().thinPlateSpline(sources, targets)
+                    warp.c("blue",0.3).lineWidth(0)
+
+                    apts = vedo.Points(sources).c("red")
+                    
+                    self.mesh = [mesh, warp, apts]
+                    self.miniWindow()
+                    self.plotter.show(mesh, warp, apts, viewup="y", at=0)
+                
+        if evt.keyPressed in ['f']:
+            if self.meshSlice is None:
+                self.meshSlice = 0
+                self.slicePlane()
+
+            elif self.meshSlice is not None:
+                self.changeDate()
+                self.meshSlice = None
             
-            elif self.meshComp is not None and self.current_exam == 'Postura':
-                _ , mesh = self.timeline[self.meshComp[0]][self.meshComp[1]]
-                mesh = vedo.Mesh(mesh).normalize()
-                
-                meshdec = mesh.clone().triangulate().decimate(N=200)
+        if evt.keyPressed in ['a']:
+            if self.meshSlice is not None:
+                self.meshSlice = max(self.meshSlice-1, 0)
+                self.slicePlane()
 
-                sources = [[0.9, 0.0, 0.2]]  # this point moves
-                targets = [[1.2, 0.0, 0.4]]  # to this.
-
-                for pt in meshdec.points():
-                    if pt[0] < 0.3:          # these pts don't move
-                        sources.append(pt)   # source = target
-                        targets.append(pt)   #
-
-                warp = mesh.clone().thinPlateSpline(sources, targets)
-                warp.c("blue",0.3).lineWidth(0)
-
-                apts = vedo.Points(sources).c("red")
-                
-                self.mesh = [mesh, warp, apts]
-                self.miniWindow()
-                self.plotter.show(mesh, warp, apts, __doc__, viewup="y", at=0)
-                
-                
+        
+        if evt.keyPressed in ['d']:
+            if self.meshSlice is not None:
+                self.meshSlice = min(self.meshSlice+1, len(self.zslice)-1)
+                self.slicePlane()
 
 with open('timeline.json', 'r') as fjson:
     timeline = json.load(fjson)
