@@ -84,10 +84,17 @@ class Viewer:
     def clearMainWindow(self):
         self.plotter.clear(at=0)
          
-    def meshOrigin(self):
-        self.mesh.origin(0, 0, 0).rotateY(360-self.angle)
-        self.angle = 0
+    def meshOrigin(self, mesh=None):
+        if mesh is None:
+            self.mesh.origin(0, 0, 0).rotateY(360-self.angle)
+            self.angle = 0
         
+        elif isinstance(mesh, Mesh):
+            return mesh.origin(0, 0, 0).rotateY(360-self.angle)
+        
+        else:
+            NotImplementedError
+            
     def slicePlane(self):
         _ , mesh = self.timeline[self.meshSlice[0]][self.meshSlice[1]]
         y1, y2 = self.zslice[self.meshSliceIndex]
@@ -174,8 +181,7 @@ class Viewer:
             if self.meshSlice is None:
                 if self.meshComp is None:
                     self.meshComp = (self.current_exam, self.index)
-                    _ , mesh = self.timeline[self.meshComp[0]][self.meshComp[1]]
-                    self.plotter.add(self.mesh.clone()., at=1, resetcam=False)
+                    self.plotter.add(self.meshOrigin(self.mesh.clone()), at=1, resetcam=False)
                     
                 elif self.meshComp == 'BLOCK':
                     self.meshComp == None
