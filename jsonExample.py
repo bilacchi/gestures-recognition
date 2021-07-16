@@ -11,10 +11,6 @@ jsonstr = {
     "Gordura":{
         "date":dates,
         "file":np.random.choice(path, n).tolist()
-    },
-    "Postura":{
-        "date":dates,
-        "file":np.random.choice(path, n).tolist()
     }
 }
 
