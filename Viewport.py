@@ -175,7 +175,7 @@ class Viewer:
                 if self.meshComp is None:
                     self.meshComp = (self.current_exam, self.index)
                     _ , mesh = self.timeline[self.meshComp[0]][self.meshComp[1]]
-                    self.plotter.add(self.mesh.clone(), at=1, resetcam=False)
+                    self.plotter.add(self.mesh.clone()., at=1, resetcam=False)
                     
                 elif self.meshComp == 'BLOCK':
                     self.meshComp == None

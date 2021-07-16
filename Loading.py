@@ -35,8 +35,6 @@ class Loading:
         self.job.start()
         while self.job.is_alive():
             self.animate()
-        self.job.close()
-        self.job.join()
             
 
 if __name__ == '__main__':
