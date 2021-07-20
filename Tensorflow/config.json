@@ -1,0 +1,13 @@
+{
+"model_name": "Jester-ConvBatch-V2",
+"checkpoint": "Models/",
+"convnet": "ConvBatch",
+"test_dataset": "annotations/final-jester-test.csv",
+"train_dataset": "annotations/final-jester-train.csv",
+"validation_dataset": "annotations/final-jester-validation.csv",
+"data_path": "final-jester",
+"num_classes": 8,
+"batch_size": 20,
+"nb_frames": 12,
+"num_epochs": 40
+}

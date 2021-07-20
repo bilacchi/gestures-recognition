@@ -4,7 +4,7 @@ import numpy as np
 
 n = 10
 dates = [(datetime.now()-timedelta(days=7*i)).strftime('%y%m%d') for i in range(n)]
-path = ['../mesh/brenda2.ply', '../mesh/brenda4.ply']
+path = ['./mesh/brenda2.ply', './mesh/brenda4.ply']
 
 
 jsonstr = {
