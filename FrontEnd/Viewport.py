@@ -2,14 +2,14 @@ import gc
 import os
 import json
 import numpy as np
-import pickle as pk
 
 import multiprocessing as mp
 from datetime import datetime
 from itertools import cycle
-from vedo import Mesh, Plotter, CornerAnnotation, Plane, interactive, settings
+from vedo import Mesh, Plotter, CornerAnnotation, interactive, settings, io
+from addons import compareMesh, Slicer
 
-from Loading import Loading
+from loading import Loading
 
 try: os.mkdir('.temp')
 except: pass
@@ -26,23 +26,7 @@ width = np.ceil(height*aspect)
 
 custom_shape = [dict(bottomleft=(0.0,0.0), topright=(1.00,1.00), bg='w', bg2='w' ),
                 dict(bottomleft=(0.0,0.0), topright=(0.20,0.30), bg='w', bg2='w')]
-
-def compare(obj1, obj2):
-    obj1 = Mesh(obj1).origin(0,0,0).normalize()
-    obj2 = Mesh(obj2).origin(0,0,0).normalize()
-    obj1.distanceToMesh(obj2, signed=True)
-    dist2mesh = obj1.getPointArray('Distance').tolist()
-    
-    with open('.temp/dist2mesh.pkl', 'wb') as fpk:        
-        pk.dump(dist2mesh, fpk)
         
-def slice(obj, y1, y2):
-    obj = Mesh(obj).normalize().origin(0,0,0)
-    ids = obj.findCellsWithin(ybounds=(y1, y2))
-    cols = [[255, 99, 71] if i in ids else [177, 177, 177] for i in range(obj.NCells())]  
-    
-    with open('.temp/sliceMesh.pkl', 'wb') as fpk:
-        pk.dump((id, cols), fpk)
 
 class Viewer:
     def __init__(self, timeline, size=(1200, 700)):
@@ -65,7 +49,7 @@ class Viewer:
         self.index = 0
 
         date, mesh = self.timeline[self.current_exam][self.index]
-        self.mesh = Mesh(mesh).normalize()
+        self.mesh = Mesh(mesh) 
 
         txt = f'{self.current_exam}\n'
         txt += datetime.strptime(str(date), '%y%m%d').strftime('%d %B, %Y')
@@ -74,13 +58,14 @@ class Viewer:
 
     def changeDate(self):
         date, mesh = self.timeline[self.current_exam][self.index]
-        self.mesh = Mesh(mesh).normalize()
-
+        self.mesh = Mesh(mesh).origin(0,0,0)
+        
         txt = f'{self.current_exam}\n'
         txt += datetime.strptime(str(date), '%y%m%d').strftime('%d %B, %Y')
         txt2d = CornerAnnotation().font('Arial').text(txt)
         
-        self.plotter.show(self.mesh, txt2d, title='Brenda Plot', viewup='z', at=0, interactorStyle=12)
+        self.clearMainWindow()
+        self.plotter.show(self.mesh, txt2d, resetcam=False, title='Brenda Plot', viewup='z', at=0, interactorStyle=12)
 
     def clearMiniWindow(self):
         self.plotter.clear(at=1)
@@ -98,34 +83,11 @@ class Viewer:
         
         else:
             NotImplementedError
-            
-    def slicePlane(self):
-        _ , mesh = self.timeline[self.meshSlice[0]][self.meshSlice[1]]
-        y1, y2 = self.zslice[self.meshSliceIndex]
-        
-        Loading(job=mp.Process(target=slice, args=(mesh, y1, y2)),
-                plotter=self.plotter).run()
-        
-        ## Add load pickle
-        with open('.temp/sliceMesh.pkl', 'rb') as fpk:
-            _, cols = pk.load(fpk)
-        
-        self.mesh.cellIndividualColors(cols)
-        self.meshOrigin()
-
-        p1 = Plane(normal=(0,1,0), sx=2, sy=2).y(y1).c('gray',0.5)
-        p2 = p1.clone().y(y2)
-        
-        self.clearMainWindow()
-        self.plotter.show(self.mesh, p1, p2, at=0, resetcam=True)
         
     def handle_key(self, evt):
         if evt.keyPressed in ['r']:
             if self.meshSlice is not None:
-                previousIndex = self.meshSliceIndex
-                self.meshSliceIndex = min(self.meshSliceIndex+1, len(self.zslice)-1)
-                if self.meshSliceIndex != previousIndex:
-                    self.slicePlane()
+                self.slicer.nextSlice()
                 
             elif self.meshSlice is None:
                 self.angle += self.d_theta
@@ -138,10 +100,7 @@ class Viewer:
 
         if evt.keyPressed in ['l']:
             if self.meshSlice is not None:
-                previousIndex = self.meshSliceIndex
-                self.meshSliceIndex = max(self.meshSliceIndex-1, 0)
-                if self.meshSliceIndex != previousIndex:
-                    self.slicePlane()
+                self.slicer.prevSlice()
                 
             elif self.meshSlice is None:
                 self.angle -= self.d_theta
@@ -173,9 +132,11 @@ class Viewer:
             self.clearMainWindow()
             
             if self.meshSlice is None and self.meshComp is None:
-                self.meshSliceIndex = 0
-                self.meshSlice = (self.current_exam, self.index)
-                self.slicePlane()
+                self.meshSlice = 'ACTIVE'
+                self.clearMainWindow()
+                _ , mesh = self.timeline[self.current_exam][self.index]
+                self.slicer = Slicer(mesh, self.plotter)
+                self.slicer.show()
 
             elif self.meshSlice is not None:
                 self.meshSlice = None
@@ -196,17 +157,11 @@ class Viewer:
                     _ , mesh2 = self.timeline[self.current_exam][self.index]
                     
                     self.clearMiniWindow()
-                    Loading(job=mp.Process(target=compare, args=(mesh1, mesh2)),
-                            plotter=self.plotter).run()
+                    Loading(plotter=self.plotter).run(job=mp.Process(target=compareMesh, args=(mesh1, mesh2)))
 
-                    with open('.temp/dist2mesh.pkl', 'rb') as fpk:
-                        dist2mesh = pk.load(fpk)
-                    
-                    mesh1 = Mesh(mesh1).origin(0,0,0).normalize().cmap('jet')
-                    mesh1._mapper.SetScalarRange(min(dist2mesh), max(dist2mesh))
-                    mesh1._mapper.ScalarVisibilityOn()
+                    mesh1 = io.load('.temp/dist2mesh.npy').actors[0]
                     mesh1.addScalarBar('Distância')
-                    
+
                     self.mesh = mesh1
                     self.meshComp = 'BLOCK'
                     self.plotter.show(self.mesh, at=0, resetcam=True)
