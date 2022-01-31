@@ -1,15 +1,24 @@
 import numpy as np
-import multiprocessing as mp
 
-from loading import Loading
 from sklearn.cluster import KMeans
-from vedo import Mesh, show, Plane, Plotter, interactive, io
+from vedo import Mesh, show, Plane, Plotter, probePoints, mesh2Volume
 
 def compareMesh(obj1, obj2):
     obj1 = Mesh(obj1).origin(0,0,0) 
     obj2 = Mesh(obj2).origin(0,0,0) 
     obj1.distanceToMesh(obj2, signed=True)
-    show(obj1, interactive=False, new=True).export(".temp/dist2mesh.npy").close()
+    show(obj1, interactive=False, new=True).export(".temp/dist2mesh.npy").close()   
+
+def compareMesh3D(obj1, obj2):
+    obj1 = Mesh(obj1).normalize().origin(0,0,0).wireframe()
+    obj2 = Mesh(obj2).normalize().origin(0,0,0).wireframe()
+    
+    vol = mesh2Volume(obj1, spacing=(0.02, 0.02, 0.02)).alpha([0,0.5]).c('blue')
+    scals = probePoints(vol, obj2).getPointArray()
+    
+    np.save('.temp/dist2mesh.npy', scals)
+    #obj2.cmap('Spectral_r', scals).addScalarBar()
+    #show(obj2, vol, interactive=False, new=True).export(".temp/dist2mesh.npy").close()       
 
 class Slicer:
     def __init__(self, obj:str, plotter:Plotter=None, n=6, levels=[3,3.5,4.3,5.1]):
@@ -73,8 +82,8 @@ class Slicer:
         mesh = Mesh([verts, faces]).clone2D(pos=[0.75, 0.5], coordsys=3, c='tomato', alpha=1, scale=.002)
         perimeter = round(arcLength(array[:,0], array[:,1])/10, 2)
         self.plotter.clear(at=0)
-        self.plotter.show(self.obj, self.pl, mesh, f'Perímetro: {perimeter} cm', at=0, interactive=False)
-        
+        self.plotter.show(self.obj, self.pl, mesh, f'Perímetro: {perimeter} cm', at=0, interactive=False, resetcam=False)
+
 def extremes(x):
         return np.min(x), np.max(x)
     

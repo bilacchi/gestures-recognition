@@ -21,8 +21,8 @@ import argparse
 import pyautogui
 import configparser
 
-qsize = 12  # size of queue to retain for 3D conv input
-sqsize = 10 # size of queue for prediction stabilisation
+qsize = 20
+sqsize = 8
 num_classes = 8
 threshold = 0.7
 
@@ -31,12 +31,11 @@ gesture_dict = {
     'Doing other things': 0, 0: 'Doing other things',
     'No gesture': 1, 1: 'No gesture', 
     'Stop Sign': 2, 2: 'Stop Sign', 
-    'Swiping Down': 3, 3: 'Swiping Down', 
-    'Swiping Left': 4, 4: 'Swiping Left', 
-    'Swiping Right': 5, 5: 'Swiping Right', 
-    'Swiping Up': 6, 6: 'Swiping Up', 
-    'Turning Hand Clockwise': 7, 7: 'Turning Hand Clockwise', 
-    'Turning Hand Counterclockwise': 8, 8: 'Turning Hand Counterclockwise'
+    'Swiping Left': 3, 3: 'Swiping Left', 
+    'Swiping Right': 4, 4: 'Swiping Right', 
+    'Swiping Up': 5, 5: 'Swiping Up', 
+    'Turning Hand Clockwise': 6, 6: 'Turning Hand Clockwise', 
+    'Turning Hand Counterclockwise': 7, 7: 'Turning Hand Counterclockwise'
 }
 
 # construct the argument parse and parse the arguments
@@ -98,7 +97,6 @@ if frame is None:
     print('[ERROR] No video stream is available')
 
 else:
-    # frame = transform(frame)
     for i in range(qsize):
         Q.append(frame)
     if (verbose > 0): print('[INFO] Video stream started...')

@@ -7,7 +7,7 @@ import multiprocessing as mp
 from datetime import datetime
 from itertools import cycle
 from vedo import Mesh, Plotter, CornerAnnotation, interactive, settings, io
-from addons import compareMesh, Slicer
+from addons import compareMesh3D, Slicer
 
 from loading import Loading
 
@@ -37,6 +37,7 @@ class Viewer:
         self.d_theta = 36
         self.meshComp = None
         self.meshSlice = None
+        self.camera = {}
         self.exams = cycle(list(timeline.keys()))
         vec = np.linspace(-2.7, 0.75, 6)
         self.zslice = np.round(list(zip(vec[:-1], vec[1:])), 2).tolist()
@@ -55,6 +56,10 @@ class Viewer:
         txt += datetime.strptime(str(date), '%y%m%d').strftime('%d %B, %Y')
         txt2d = CornerAnnotation().font('Arial').text(txt)
         self.plotter.show(self.mesh, txt2d, title='Brenda Plot', viewup='y', at=0, interactorStyle=12)
+        self.camera['Position'] = self.plotter.camera.GetPosition()
+        self.camera['FocalPoint'] = self.plotter.camera.GetFocalPoint()
+        self.camera['ParallelScale'] = self.plotter.camera.GetParallelScale()
+        self.camera['ViewUp'] = self.plotter.camera.GetViewUp()
 
     def changeDate(self):
         date, mesh = self.timeline[self.current_exam][self.index]
@@ -72,6 +77,10 @@ class Viewer:
         
     def clearMainWindow(self):
         self.plotter.clear(at=0)
+        self.plotter.camera.SetPosition(self.camera['Position'])
+        self.plotter.camera.SetFocalPoint(self.camera['FocalPoint'])
+        self.plotter.camera.SetParallelScale(self.camera['ParallelScale'])
+        self.plotter.camera.SetViewUp(self.camera['ViewUp'])
          
     def meshOrigin(self, mesh=None):
         if mesh is None:
@@ -128,9 +137,6 @@ class Viewer:
                 self.changeDate()
 
         if evt.keyPressed in ['Up']:
-            self.clearMiniWindow()
-            self.clearMainWindow()
-            
             if self.meshSlice is None and self.meshComp is None:
                 self.meshSlice = 'ACTIVE'
                 self.clearMainWindow()
@@ -149,7 +155,7 @@ class Viewer:
                     self.plotter.add(self.meshOrigin(self.mesh.clone()), at=1, resetcam=False)
                     
                 elif self.meshComp == 'BLOCK':
-                    self.meshComp == None
+                    self.meshComp = None
                     self.changeDate()
                     
                 elif self.meshComp is not None:
@@ -157,12 +163,11 @@ class Viewer:
                     _ , mesh2 = self.timeline[self.current_exam][self.index]
                     
                     self.clearMiniWindow()
-                    Loading(plotter=self.plotter).run(job=mp.Process(target=compareMesh, args=(mesh1, mesh2)))
-
-                    mesh1 = io.load('.temp/dist2mesh.npy').actors[0]
-                    mesh1.addScalarBar('Distância')
-
-                    self.mesh = mesh1
+                    Loading(plotter=self.plotter).run(job=mp.Process(target=compareMesh3D, args=(mesh1, mesh2)))
+                    
+                    scals = np.load('.temp/dist2mesh.npy')
+                    self.mesh.origin(0,0,0).cmap('Spectral_r', scals).addScalarBar()
+                
                     self.meshComp = 'BLOCK'
                     self.plotter.show(self.mesh, at=0, resetcam=True)
                 

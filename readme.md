@@ -49,7 +49,7 @@ O modelo consiste numa rede com um série de camadas convolucionais e uma camada
 
 | Layer (type) |                Output Shape     |         Param # |  
 |:------------:|:-------------------------------:|:---------------:|
-| (TimeDistributed)  | (None, 12, 512) |          4689216 |  
+| (TimeDistributed)  | (None, 20, 512) |          4689216 |  
 | (GRU) |                   (None, 120) |              228240   | 
 | (Dropout) |         (None, 120) |              0        | 
 | (Dense) |               (None, 60) |               7260     | 
